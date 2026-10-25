@@ -23,8 +23,8 @@ const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as Pack
 
 describe("Pi package manifest", () => {
 	test("declares a public Pi extension package with host peers", () => {
-		expect(pkg.name).toBe("pi-sound-alerts");
-		expect(pkg.version).toBe("0.1.0");
+		expect(pkg.name).toBe("@sanif/pi-sound-alerts");
+		expect(pkg.version).toBe("0.1.1");
 		expect(pkg.license).toBe("MIT");
 		expect(pkg.keywords).toContain("pi-package");
 		expect(pkg.pi?.extensions).toEqual(["./index.ts"]);

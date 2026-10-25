@@ -15,7 +15,7 @@ sound for each.
 ## Install
 
 ```bash
-pi install npm:pi-sound-alerts
+pi install npm:@sanif/pi-sound-alerts
 ```
 
 From GitHub (follows the default branch):

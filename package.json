@@ -1,6 +1,6 @@
 {
-  "name": "pi-sound-alerts",
-  "version": "0.1.0",
+  "name": "@sanif/pi-sound-alerts",
+  "version": "0.1.1",
   "description": "Sound alerts for Pi: hear when the agent finishes, asks a question, fails, or is cancelled. Nine original themes, from quiet beeps to meme-style gags, or your own MP3s.",
   "type": "module",
   "main": "index.ts",
