@@ -7,7 +7,9 @@ describe("themes", () => {
 		const ids = THEMES.map((theme) => theme.id);
 		expect(new Set(ids).size).toBe(ids.length);
 		expect(findTheme(DEFAULT_THEME)).toBeDefined();
-		expect(findTheme(" Reels ")?.id).toBe("reels");
+		expect(findTheme(" Gags ")?.id).toBe("gags");
+		expect(findTheme("reels")?.id).toBe("gags");
+		expect(THEMES[0]!.id).toBe(DEFAULT_THEME);
 		expect(findTheme("nope")).toBeUndefined();
 	});
 
@@ -31,7 +33,7 @@ describe("themes", () => {
 	}
 
 	test("rendering is deterministic", () => {
-		const theme = findTheme("reels")!;
+		const theme = findTheme("gags")!;
 		expect(theme.render.done()).toEqual(theme.render.done());
 	});
 });

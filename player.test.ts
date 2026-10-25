@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import type { ChildProcess } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Player, playerCommand, RENDER_VERSION, themeSoundFile } from "./player";
@@ -77,4 +77,13 @@ test("theme sounds render once into a versioned cache", () => {
 	const first = readFileSync(file);
 	expect(themeSoundFile(findTheme("minimal")!, "done", cache)).toBe(file);
 	expect(readFileSync(file)).toEqual(first);
+});
+
+test("a new render version removes stale cached renders", () => {
+	const cache = mkdtempSync(join(tmpdir(), "psa-cache-"));
+	temps.push(cache);
+	mkdirSync(join(cache, "v0"), { recursive: true });
+	themeSoundFile(findTheme("minimal")!, "done", cache);
+	expect(existsSync(join(cache, "v0"))).toBe(false);
+	expect(existsSync(join(cache, `v${RENDER_VERSION}`))).toBe(true);
 });

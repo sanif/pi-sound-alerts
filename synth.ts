@@ -109,6 +109,8 @@ export interface ToneSpec {
 	wander?: number;
 	maxFreq?: number;
 	seed?: number;
+	/** Starting phase in radians; offset detuned voices so they do not spike together. */
+	phase?: number;
 }
 
 const BLOCK = 32;
@@ -119,7 +121,7 @@ export function tone(spec: ToneSpec): Float32Array {
 	const out = new Float32Array(length);
 	const maxFreq = Math.min(spec.maxFreq ?? 9000, SAMPLE_RATE / 2 - 500);
 	const next = random(spec.seed ?? 1);
-	let phase = 0;
+	let phase = spec.phase ?? 0;
 	let wander = 0;
 	let wanderTarget = 0;
 	let amplitudes: number[] = [];
@@ -315,7 +317,8 @@ export function reverb(
 const MAX_RMS = 0.17;
 
 /** Trim trailing near-silence, fade the edges, and scale to `peak` within the loudness ceiling. */
-export function finish(buffer: Float32Array, peak = 0.85): Float32Array {
+export function finish(input: Float32Array, peak = 0.85): Float32Array {
+	const buffer = removeDc(input);
 	let max = 0;
 	for (const sample of buffer) max = Math.max(max, Math.abs(sample));
 	let end = buffer.length;
@@ -339,6 +342,22 @@ export function finish(buffer: Float32Array, peak = 0.85): Float32Array {
 		if (i < fadeIn) edge = i / fadeIn;
 		if (i >= out.length - fadeOut) edge = Math.min(edge, (out.length - 1 - i) / fadeOut);
 		out[i] = out[i]! * scale * edge;
+	}
+	return out;
+}
+
+/** One-pole DC blocker (~10 Hz) so speakers never get a constant offset. */
+export function removeDc(input: Float32Array): Float32Array {
+	const out = new Float32Array(input.length);
+	const r = 1 - (2 * Math.PI * 10) / SAMPLE_RATE;
+	let x1 = 0;
+	let y1 = 0;
+	for (let i = 0; i < input.length; i += 1) {
+		const x = input[i]!;
+		const y = x - x1 + r * y1;
+		x1 = x;
+		y1 = y;
+		out[i] = y;
 	}
 	return out;
 }

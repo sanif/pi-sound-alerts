@@ -30,7 +30,7 @@ export interface SoundAlertsOptions {
 
 export interface ResolvedSound {
 	file?: string;
-	/** Human-readable source, e.g. "Reels: Faah" or a file path. */
+	/** Human-readable source, e.g. "Gags: Faah" or a file path. */
 	label: string;
 	warning?: string;
 }

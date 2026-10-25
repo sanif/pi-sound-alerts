@@ -4,13 +4,13 @@ Sound alerts for [Pi](https://github.com/earendil-works/pi). Hear when the agent
 finishes, needs your answer, hits an error, or gets cancelled, with a different
 sound for each.
 
-- **5 built-in themes**, including **Reels** with meme-style voice gags: a
-  *"faah"*, a *"huh?"*, a sad trombone, and a *"bruh"*.
+- **9 built-in themes**, from quiet beeps to **Gags**, with meme-style voice
+  gags: a *"faah"*, a *"huh?"*, a sad trombone, and a *"bruh"*.
 - **Live theme picker**: `/sounds` plays each theme as you scroll through it.
 - **Your own sounds**: point any state at your own MP3/WAV, borrow one sound
   from another theme, or mute it.
 - **No audio files bundled**: every theme sound is synthesized from code on
-  first use. The package is about 60 KB.
+  first use. The package is about 80 KB.
 
 ## Install
 
@@ -40,16 +40,21 @@ compaction, and queued follow-ups.
 
 ## Themes
 
-| Theme              | done         | question       | error         | aborted        |
-| ------------------ | ------------ | -------------- | ------------- | -------------- |
-| `reels` (default)  | Faah         | Huh?           | Sad trombone  | Bruh           |
-| `hype`             | Air horn     | Dun dun dunnn  | Boom          | Record scratch |
-| `arcade`           | Power-up     | Blip blip      | Game over     | Zap            |
-| `zen`              | Bell chime   | Singing bowl   | Gong          | Wood tick      |
-| `minimal`          | Rising beep  | Double ping    | Falling beep  | Low blip       |
+| Theme               | done          | question       | error             | aborted        |
+| ------------------- | ------------- | -------------- | ----------------- | -------------- |
+| `minimal` (default) | Rising beep   | Double ping    | Falling beep      | Low blip       |
+| `zen`               | Bell chime    | Singing bowl   | Gong              | Wood tick      |
+| `arcade`            | Power-up      | Blip blip      | Game over         | Zap            |
+| `retro`             | Startup chord | Ding           | Critical thud     | Click          |
+| `scifi`             | Warp chirp    | Comm beep      | Red alert         | Power down     |
+| `synthwave`         | Chord stab    | Arpeggio       | Detuned fall      | Filter sweep   |
+| `cartoon`           | Slide whistle | Boing          | Bonk + slide down | Pop            |
+| `hype`              | Air horn      | Dun dun dunnn  | Boom              | Record scratch |
+| `gags`              | Faah          | Huh?           | Sad trombone      | Bruh           |
 
-The Reels and Hype sounds are original syntheses *in the style of* popular
-short-video sound gags. They are not copies of any recording.
+Every sound is an original synthesis. Gags, Hype, and Retro are *in the style
+of* popular short-video gags and classic desktop sounds; they are not copies of
+any recording.
 
 ## Commands
 
@@ -88,7 +93,7 @@ for you, but you can also edit it by hand; changes apply on the next alert.
 ```json
 {
 	"enabled": true,
-	"theme": "reels",
+	"theme": "minimal",
 	"volume": 0.7,
 	"modes": ["tui"],
 	"sounds": {
@@ -102,7 +107,7 @@ for you, but you can also edit it by hand; changes apply on the next alert.
 | Key       | Default     | Meaning                                                                                   |
 | --------- | ----------- | ----------------------------------------------------------------------------------------- |
 | `enabled` | `true`      | Master switch                                                                             |
-| `theme`   | `"reels"`   | One of `reels`, `hype`, `arcade`, `zen`, `minimal`                                        |
+| `theme`   | `"minimal"` | Any theme id from the table above                                                         |
 | `volume`  | `0.7`       | Playback volume, `0` to `1`                                                               |
 | `modes`   | `["tui"]`   | Pi modes that play sounds: `tui`, `rpc`, `json`, `print`                                  |
 | `sounds`  | `{}`        | Per-state override: a file path, `"theme:<id>"`, or `false` to mute                       |

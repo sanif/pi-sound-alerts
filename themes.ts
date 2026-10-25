@@ -47,7 +47,7 @@ export interface Theme {
 }
 
 // ---------------------------------------------------------------------------
-// reels: original voice and gag sounds in the style of short-video memes.
+// gags: original voice and gag sounds in the style of short-video memes.
 
 function faah(): Float32Array {
 	const start = 0.11;
@@ -295,14 +295,15 @@ function boom(): Float32Array {
 		[0.5, 42],
 		[1.6, 36],
 	]);
-	const decay = (t: number) => Math.min(t / 0.004, 1) * Math.exp(-t / 0.55);
+	const decay = (t: number) =>
+		Math.sin((Math.PI / 2) * Math.min(t / 0.008, 1)) * Math.exp(-t / 0.55) * Math.min((1.6 - t) / 0.4, 1);
 	const body = mix(
 		{ buffer: sine(1.6, pitch, decay) },
 		{ buffer: sine(1.6, (t) => pitch(t) * 2.01, (t) => decay(t) * 0.45) },
 		{ buffer: sine(1.6, (t) => pitch(t) * 3.02, (t) => decay(t) * 0.2) },
-		{ buffer: click({ duration: 0.05, center: 1600, q: 0.6, decay: 0.008, seed: 71 }), gain: 0.6 },
+		{ buffer: filter(click({ duration: 0.05, center: 900, q: 0.6, decay: 0.01, seed: 71 }), "lowpass", 1800), gain: 0.5 },
 	);
-	return finish(reverb(drive(body, 3.2), { mix: 0.25, tail: 1.2, decay: 0.86, damp: 0.5 }));
+	return finish(reverb(drive(body, 2.2), { mix: 0.25, tail: 1.2, decay: 0.86, damp: 0.5 }));
 }
 
 function scratch(): Float32Array {
@@ -328,7 +329,9 @@ function scratch(): Float32Array {
 		[0.3, 0.9],
 		[0.37, 0],
 	]);
-	return finish(shape(drive(mix({ buffer: swish, gain: 1.4 }, { buffer: grind, gain: 0.35 }), 2), amp));
+	return finish(
+		reverb(shape(drive(mix({ buffer: swish, gain: 1.4 }, { buffer: grind, gain: 0.35 }), 2), amp), { mix: 0.1, tail: 0.3 }),
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -364,7 +367,7 @@ function blipQuestion(): Float32Array {
 		amp: articulate(notes, { attack: 0.003, release: 0.03, sustain: 0.6 }),
 		duty: 0.5,
 	});
-	return finish(lead, 0.7);
+	return finish(reverb(lead, { mix: 0.12, tail: 0.3 }), 0.7);
 }
 
 function gameOver(): Float32Array {
@@ -381,7 +384,7 @@ function gameOver(): Float32Array {
 		duty: 0.5,
 		vibrato: { rate: 6, depth: (t) => (t > 0.8 ? 0.02 : 0) },
 	});
-	return finish(lead, 0.7);
+	return finish(reverb(lead, { mix: 0.1, tail: 0.35 }), 0.7);
 }
 
 function zap(): Float32Array {
@@ -398,7 +401,7 @@ function zap(): Float32Array {
 		]),
 		duty: 0.125,
 	});
-	return finish(lead, 0.65);
+	return finish(reverb(lead, { mix: 0.12, tail: 0.25 }), 0.65);
 }
 
 // ---------------------------------------------------------------------------
@@ -483,36 +486,336 @@ function beeps(notes: Note[], options: { square?: boolean; peak?: number } = {})
 }
 
 // ---------------------------------------------------------------------------
+// shared helpers for the newer themes.
+
+/** Band-limited sawtooth. */
+function saw(options: {
+	duration: number;
+	f0: (t: number) => number;
+	amp: (t: number) => number;
+	maxFreq?: number;
+	seed?: number;
+	phase?: number;
+}): Float32Array {
+	return tone({
+		phase: options.phase,
+		duration: options.duration,
+		f0: options.f0,
+		amp: options.amp,
+		maxFreq: options.maxFreq ?? 6000,
+		seed: options.seed,
+		spectrum: (_freq, k) => 1 / k,
+	});
+}
+
+/** Several detuned saws per note, like an analog polysynth. */
+function supersaw(options: {
+	notes: readonly number[];
+	duration: number;
+	amp: (t: number) => number;
+	bend?: (t: number) => number;
+	detune?: number;
+}): Float32Array {
+	const detune = options.detune ?? 0.006;
+	const bend = options.bend ?? (() => 1);
+	const voices = options.notes.flatMap((f, noteIndex) =>
+		[-1, 0, 1].map((spread, voiceIndex) => ({
+			buffer: saw({
+				duration: options.duration,
+				f0: (t) => f * bend(t) * (1 + spread * detune),
+				amp: options.amp,
+				maxFreq: 3500,
+				seed: 200 + noteIndex * 3 + voiceIndex,
+				phase: (noteIndex * 3 + voiceIndex) * 2.399,
+			}),
+			gain: spread === 0 ? 1 : 0.7,
+		})),
+	);
+	return mix(...voices);
+}
+
+/** Soft attack/release envelope for a single sustained event. */
+function swell(duration: number, attack: number, release: number, level = 1): (t: number) => number {
+	return (t) => {
+		if (t < 0 || t > duration) return 0;
+		const rise = Math.min(t / attack, 1);
+		const fall = Math.min((duration - t) / release, 1);
+		return level * Math.sin((Math.PI / 2) * rise) * Math.sin((Math.PI / 2) * Math.max(fall, 0));
+	};
+}
+
+// ---------------------------------------------------------------------------
+// scifi: starship console.
+
+function warpChirp(): Float32Array {
+	const pitch = glide([
+		[0, 320],
+		[0.28, 2600],
+		[0.4, 2400],
+	]);
+	const env = swell(0.42, 0.02, 0.18);
+	const body = mix(
+		{ buffer: sine(0.45, pitch, env) },
+		{ buffer: sine(0.45, (t) => pitch(t) * 1.5, (t) => env(t) * 0.35) },
+		{ buffer: sine(0.45, (t) => pitch(t) * 0.5, (t) => env(t) * 0.4) },
+	);
+	return finish(reverb(body, { mix: 0.3, tail: 0.7, decay: 0.8 }), 0.7);
+}
+
+function commBeep(): Float32Array {
+	const chirp = (f: number) =>
+		tone({
+			duration: 0.1,
+			f0: () => f,
+			amp: swell(0.1, 0.006, 0.03),
+			maxFreq: 6000,
+			spectrum: (_freq, k) => (k === 1 ? 1 : k === 3 ? 0.18 : 0),
+		});
+	return finish(
+		reverb(
+			mix(
+				{ buffer: chirp(hz("E6")) },
+				{ at: 0.12, buffer: chirp(hz("A6")) },
+				{ at: 0.3, buffer: chirp(hz("E6")), gain: 0.8 },
+				{ at: 0.42, buffer: chirp(hz("A6")), gain: 0.8 },
+			),
+			{ mix: 0.18, tail: 0.4 },
+		),
+		0.6,
+	);
+}
+
+function redAlert(): Float32Array {
+	const cycle = 0.42;
+	const pitch = (t: number) => {
+		const local = (t % cycle) / cycle;
+		return 330 * 2 ** (local * 0.85);
+	};
+	const amp = (t: number) => {
+		const local = t % cycle;
+		return swell(cycle, 0.02, 0.06)(local) * (t < cycle * 2 ? 1 : 0);
+	};
+	const horn = tone({
+		duration: cycle * 2,
+		f0: pitch,
+		amp,
+		maxFreq: 6000,
+		spectrum: (freq, k) => {
+			const x = (freq - 1400) / 1200;
+			return (0.5 + 1 / (1 + x * x)) / k;
+		},
+	});
+	return finish(reverb(filter(horn, "lowpass", 4500), { mix: 0.15, tail: 0.5 }));
+}
+
+function powerDown(): Float32Array {
+	const pitch = glide([
+		[0, 900],
+		[0.75, 55],
+	]);
+	const env = swell(0.8, 0.01, 0.25);
+	const body = saw({ duration: 0.8, f0: pitch, amp: env, maxFreq: 4000 });
+	const closing = filter(body, "lowpass", glide([
+		[0, 3500],
+		[0.8, 180],
+	]), 2.5);
+	return finish(reverb(closing, { mix: 0.15, tail: 0.4 }));
+}
+
+// ---------------------------------------------------------------------------
+// retro: original desktop-OS style sounds.
+
+function startupChord(): Float32Array {
+	const notes = ["C3", "G3", "C4", "E4", "G4", "D5"].map(hz);
+	const env = (t: number) =>
+		Math.min(t / 0.12, 1) ** 2 * Math.exp(-Math.max(t - 0.12, 0) / 0.9) * Math.min((2.2 - t) / 0.6, 1);
+	const pad = mix(
+		...notes.map((f, index) => ({
+			buffer: tone({
+				duration: 2.2,
+				f0: () => f * (1 + (index % 2 ? 0.002 : -0.002)),
+				amp: env,
+				maxFreq: 5000,
+				seed: 300 + index,
+				spectrum: (_freq, k) => Math.exp(-(k - 1) / 1.6) / k,
+			}),
+			gain: index < 2 ? 0.8 : 0.6,
+		})),
+	);
+	return finish(reverb(pad, { mix: 0.3, tail: 1, decay: 0.84 }), 0.7);
+}
+
+function ding(): Float32Array {
+	const partials = [
+		[1, 1, 0.55],
+		[2.01, 0.35, 0.3],
+		[3.02, 0.12, 0.18],
+		[4.17, 0.06, 0.1],
+	] as const;
+	return finish(reverb(bell({ f: hz("A5"), duration: 1.2, partials, attack: 0.003 }), { mix: 0.15, tail: 0.4 }), 0.65);
+}
+
+function criticalThud(): Float32Array {
+	const env = (t: number) => Math.min(t / 0.006, 1) * Math.exp(-t / 0.14);
+	const square = (f: number, seed: number) =>
+		tone({
+			duration: 0.6,
+			f0: () => f,
+			amp: env,
+			maxFreq: 3500,
+			seed,
+			phase: seed * 2.399,
+			spectrum: (_freq, k) => (k % 2 === 1 ? 1 / k : 0),
+		});
+	const low = sine(0.6, glide([
+		[0, 140],
+		[0.2, 60],
+	]), (t) => Math.min(t / 0.003, 1) * Math.exp(-t / 0.12));
+	return finish(
+		reverb(mix({ buffer: square(hz("E3"), 310) }, { buffer: square(hz("F3"), 311), gain: 0.8 }, { buffer: low, gain: 1.2 }), {
+			mix: 0.12,
+			tail: 0.4,
+		}),
+	);
+}
+
+function mouseClick(): Float32Array {
+	const tick = (center: number, seed: number) =>
+		mix(
+			{ buffer: click({ duration: 0.03, center, q: 3, decay: 0.003, seed }) },
+			{ buffer: sine(0.03, () => center / 2, (t) => Math.min(t / 0.0005, 1) * Math.exp(-t / 0.004)), gain: 0.4 },
+		);
+	return finish(
+		reverb(mix({ buffer: tick(3200, 320) }, { at: 0.07, buffer: tick(2600, 321), gain: 0.7 }), { mix: 0.12, tail: 0.2 }),
+		0.5,
+	);
+}
+
+// ---------------------------------------------------------------------------
+// cartoon: slide whistles, springs, and bonks.
+
+function slideWhistle(from: number, to: number, duration: number, seed: number): Float32Array {
+	const pitch = glide([
+		[0, from],
+		[duration * 0.85, to],
+		[duration, to],
+	]);
+	const env = swell(duration, 0.04, 0.08);
+	const tonePart = sine(duration, (t) => pitch(t) * (1 + 0.012 * Math.sin(2 * Math.PI * 7 * t)), env);
+	const breath = shape(filter(noise(duration, seed), "bandpass", (t) => pitch(t), 6), (t) => env(t) * 0.25);
+	return mix({ buffer: tonePart }, { buffer: breath }, { buffer: sine(duration, (t) => pitch(t) * 2, (t) => env(t) * 0.08) });
+}
+
+function whistleUp(): Float32Array {
+	return finish(reverb(slideWhistle(480, 1900, 0.55, 401), { mix: 0.12, tail: 0.3 }), 0.7);
+}
+
+function boing(): Float32Array {
+	const duration = 0.7;
+	const pitch = (t: number) => 170 * (1 + 0.45 * Math.sin(2 * Math.PI * 11 * t) * Math.exp(-t / 0.3)) * (1 + t * 0.35);
+	const env = (t: number) => Math.min(t / 0.004, 1) * Math.exp(-t / 0.22) * Math.min((duration - t) / 0.05, 1);
+	const spring = tone({
+		duration,
+		f0: pitch,
+		amp: env,
+		maxFreq: 4000,
+		spectrum: (freq, k) => {
+			const x = (freq - 900) / 500;
+			return (0.4 + 1 / (1 + x * x)) / k;
+		},
+	});
+	return finish(reverb(spring, { mix: 0.1, tail: 0.3 }));
+}
+
+function bonkSlide(): Float32Array {
+	const bonk = mix(
+		{ buffer: click({ duration: 0.12, center: 900, q: 6, decay: 0.03, seed: 410 }), gain: 1.4 },
+		{ buffer: sine(0.15, glide([
+			[0, 520],
+			[0.15, 380],
+		]), (t) => Math.min(t / 0.002, 1) * Math.exp(-t / 0.05)) },
+	);
+	return finish(
+		reverb(mix({ buffer: bonk }, { at: 0.18, buffer: slideWhistle(1500, 260, 0.75, 411), gain: 0.8 }), { mix: 0.12, tail: 0.35 }),
+	);
+}
+
+function pop(): Float32Array {
+	const body = sine(0.08, glide([
+		[0, 1400],
+		[0.06, 320],
+	]), (t) => Math.min(t / 0.001, 1) * Math.exp(-t / 0.02));
+	return finish(
+		reverb(mix({ buffer: body }, { buffer: click({ duration: 0.03, center: 2500, q: 1.2, decay: 0.003, seed: 420 }), gain: 0.4 }), {
+			mix: 0.12,
+			tail: 0.2,
+		}),
+		0.6,
+	);
+}
+
+// ---------------------------------------------------------------------------
+// synthwave: detuned analog synths.
+
+function chordStab(): Float32Array {
+	const notes = ["A3", "C4", "E4", "G4", "B4"].map(hz);
+	const env = (t: number) => Math.min(t / 0.01, 1) * Math.exp(-t / 0.5) * Math.min((1.4 - t) / 0.4, 1);
+	const stab = supersaw({ notes, duration: 1.4, amp: env });
+	const shaped = filter(stab, "lowpass", glide([
+		[0, 5000],
+		[0.6, 700],
+		[1.4, 500],
+	]), 1.2);
+	return finish(reverb(shaped, { mix: 0.25, tail: 0.9, decay: 0.82 }), 0.85);
+}
+
+function arp(): Float32Array {
+	const names = ["A4", "C5", "E5", "A5", "E5", "C5"];
+	const step = 0.085;
+	const notes: Note[] = names.map((name, index) => ({ f: hz(name), at: index * step, len: step * 0.8 }));
+	const lead = saw({
+		duration: names.length * step + 0.1,
+		f0: melody(notes, 0.002),
+		amp: articulate(notes, { attack: 0.004, release: 0.04, sustain: 0.5 }),
+		maxFreq: 6000,
+	});
+	return finish(reverb(filter(lead, "lowpass", 2600, 1.5), { mix: 0.3, tail: 0.6, decay: 0.8 }), 0.65);
+}
+
+function detunedFall(): Float32Array {
+	const notes = ["E4", "G4", "B4"].map(hz);
+	const bend = glide([
+		[0, 1],
+		[0.25, 1],
+		[1.2, 0.5],
+	]);
+	const env = swell(1.25, 0.015, 0.4);
+	const chord = supersaw({ notes, duration: 1.25, amp: env, bend, detune: 0.012 });
+	return finish(
+		reverb(filter(chord, "lowpass", glide([
+			[0, 3500],
+			[1.25, 400],
+		])), { mix: 0.25, tail: 0.6 }),
+	);
+}
+
+function filterSweep(): Float32Array {
+	const duration = 0.6;
+	const env = swell(duration, 0.01, 0.2);
+	const source = mix(
+		{ buffer: saw({ duration, f0: () => hz("A2"), amp: env, maxFreq: 6000 }) },
+		{ buffer: shape(noise(duration, 430), env), gain: 0.25 },
+	);
+	const swept = filter(source, "lowpass", glide([
+		[0, 6000],
+		[duration, 150],
+	]), 4);
+	return finish(reverb(swept, { mix: 0.2, tail: 0.4 }));
+}
+
+// ---------------------------------------------------------------------------
 
 export const THEMES: readonly Theme[] = [
-	{
-		id: "reels",
-		name: "Reels",
-		description: "Meme-style voice gags: faah, huh?, sad trombone, bruh",
-		labels: { done: "Faah", question: "Huh?", error: "Sad trombone", aborted: "Bruh" },
-		render: { done: faah, question: huh, error: sadTrombone, aborted: bruh },
-	},
-	{
-		id: "hype",
-		name: "Hype",
-		description: "Air horn, dramatic sting, deep boom, record scratch",
-		labels: { done: "Air horn", question: "Dun dun dunnn", error: "Boom", aborted: "Record scratch" },
-		render: { done: airhorn, question: dramatic, error: boom, aborted: scratch },
-	},
-	{
-		id: "arcade",
-		name: "Arcade",
-		description: "Chiptune power-up, blips, game over, zap",
-		labels: { done: "Power-up", question: "Blip blip", error: "Game over", aborted: "Zap" },
-		render: { done: powerUp, question: blipQuestion, error: gameOver, aborted: zap },
-	},
-	{
-		id: "zen",
-		name: "Zen",
-		description: "Bells, singing bowl, gong, wood block",
-		labels: { done: "Bell chime", question: "Singing bowl", error: "Gong", aborted: "Wood tick" },
-		render: { done: chime, question: bowl, error: gong, aborted: woodTick },
-	},
 	{
 		id: "minimal",
 		name: "Minimal",
@@ -540,10 +843,71 @@ export const THEMES: readonly Theme[] = [
 			aborted: () => beeps([{ f: hz("E4"), at: 0, len: 0.1 }], { peak: 0.5 }),
 		},
 	},
+	{
+		id: "zen",
+		name: "Zen",
+		description: "Bells, singing bowl, gong, wood block",
+		labels: { done: "Bell chime", question: "Singing bowl", error: "Gong", aborted: "Wood tick" },
+		render: { done: chime, question: bowl, error: gong, aborted: woodTick },
+	},
+	{
+		id: "arcade",
+		name: "Arcade",
+		description: "Chiptune power-up, blips, game over, zap",
+		labels: { done: "Power-up", question: "Blip blip", error: "Game over", aborted: "Zap" },
+		render: { done: powerUp, question: blipQuestion, error: gameOver, aborted: zap },
+	},
+	{
+		id: "retro",
+		name: "Retro OS",
+		description: "Original desktop-style startup chord, ding, critical thud, click",
+		labels: { done: "Startup chord", question: "Ding", error: "Critical thud", aborted: "Click" },
+		render: { done: startupChord, question: ding, error: criticalThud, aborted: mouseClick },
+	},
+	{
+		id: "scifi",
+		name: "Sci-fi",
+		description: "Starship console: warp chirp, comm beep, red alert, power down",
+		labels: { done: "Warp chirp", question: "Comm beep", error: "Red alert", aborted: "Power down" },
+		render: { done: warpChirp, question: commBeep, error: redAlert, aborted: powerDown },
+	},
+	{
+		id: "synthwave",
+		name: "Synthwave",
+		description: "80s analog synths: chord stab, arpeggio, detuned fall, filter sweep",
+		labels: { done: "Chord stab", question: "Arpeggio", error: "Detuned fall", aborted: "Filter sweep" },
+		render: { done: chordStab, question: arp, error: detunedFall, aborted: filterSweep },
+	},
+	{
+		id: "cartoon",
+		name: "Cartoon",
+		description: "Slide whistle, boing, bonk, pop",
+		labels: { done: "Slide whistle", question: "Boing", error: "Bonk + slide down", aborted: "Pop" },
+		render: { done: whistleUp, question: boing, error: bonkSlide, aborted: pop },
+	},
+	{
+		id: "hype",
+		name: "Hype",
+		description: "Air horn, dramatic sting, deep boom, record scratch",
+		labels: { done: "Air horn", question: "Dun dun dunnn", error: "Boom", aborted: "Record scratch" },
+		render: { done: airhorn, question: dramatic, error: boom, aborted: scratch },
+	},
+	{
+		id: "gags",
+		name: "Gags",
+		description: "Meme-style voice gags: faah, huh?, sad trombone, bruh",
+		labels: { done: "Faah", question: "Huh?", error: "Sad trombone", aborted: "Bruh" },
+		render: { done: faah, question: huh, error: sadTrombone, aborted: bruh },
+	},
 ];
 
-export const DEFAULT_THEME = "reels";
+export const DEFAULT_THEME = "minimal";
+
+/** Old theme ids that still resolve, so existing configs keep working. */
+const ALIASES: Record<string, string> = { reels: "gags" };
 
 export function findTheme(id: string): Theme | undefined {
-	return THEMES.find((theme) => theme.id === id.trim().toLowerCase());
+	const key = id.trim().toLowerCase();
+	const resolved = ALIASES[key] ?? key;
+	return THEMES.find((theme) => theme.id === resolved);
 }

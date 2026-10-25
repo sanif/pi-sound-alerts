@@ -67,3 +67,7 @@ describe("config", () => {
 		expect(themeReference("./theme.mp3")).toBeUndefined();
 	});
 });
+
+test("old reels theme id still loads as gags", () => {
+	expect(parseConfig({ theme: "reels" })).toEqual({ config: { ...DEFAULT_CONFIG, theme: "gags" }, warnings: [] });
+});

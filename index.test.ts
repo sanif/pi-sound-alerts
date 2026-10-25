@@ -74,7 +74,7 @@ describe("alerts", () => {
 		await emit("agent_settled", { aborted: false });
 		await emit("agent_start");
 		await emit("agent_settled", { aborted: true });
-		expect(player.names()).toEqual(["reels-done.wav", "reels-error.wav", "reels-aborted.wav"]);
+		expect(player.names()).toEqual(["minimal-done.wav", "minimal-error.wav", "minimal-aborted.wav"]);
 		expect(player.played[0]!.volume).toBe(0.7);
 	});
 
@@ -83,7 +83,7 @@ describe("alerts", () => {
 		await emit("ui_prompt_start", { kind: "select" });
 		await emit("agent_start");
 		await emit("ui_prompt_start", { kind: "select" });
-		expect(player.names()).toEqual(["reels-question.wav"]);
+		expect(player.names()).toEqual(["minimal-question.wav"]);
 	});
 
 	test("stays quiet outside configured modes, when off, or via env", async () => {
@@ -122,7 +122,7 @@ describe("alerts", () => {
 		writeFileSync(join(agentDir, CONFIG_FILE), JSON.stringify({ sounds: { done: "gone.mp3" } }));
 		await emit("agent_settled", { aborted: false });
 		await emit("agent_settled", { aborted: false });
-		expect(player.names()).toEqual(["reels-done.wav", "reels-done.wav"]);
+		expect(player.names()).toEqual(["minimal-done.wav", "minimal-done.wav"]);
 		expect(notes.filter((note) => note.message.includes("not found"))).toHaveLength(1);
 	});
 });

@@ -212,11 +212,14 @@ export function bell(options: {
 	level?: number;
 }): Float32Array {
 	const attack = options.attack ?? 0.002;
+	const release = options.duration * 0.3;
+	// Ease every partial to silence before the buffer ends so nothing is cut off.
+	const fade = (t: number) => Math.sin((Math.PI / 2) * Math.min(Math.max((options.duration - t) / release, 0), 1));
 	const parts = options.partials.map(([ratio, level, decay]) =>
 		sine(
 			options.duration,
 			constant(options.f * ratio),
-			(t) => (options.level ?? 1) * level * Math.min(t / attack, 1) * Math.exp(-t / decay),
+			(t) => (options.level ?? 1) * level * Math.min(t / attack, 1) * Math.exp(-t / decay) * fade(t),
 		),
 	);
 	return mix(...parts.map((buffer) => ({ buffer })));
@@ -231,5 +234,6 @@ export function click(options: {
 	seed: number;
 }): Float32Array {
 	const raw = filter(noise(options.duration, options.seed), "bandpass", options.center, options.q);
-	return shape(raw, (t) => Math.exp(-t / options.decay));
+	// A 1 ms ramp keeps the transient punchy without a hard click.
+	return shape(raw, (t) => Math.min(t / 0.001, 1) * Math.exp(-t / options.decay));
 }

@@ -1,11 +1,11 @@
 import { type ChildProcess, spawn as nodeSpawn } from "node:child_process";
-import { accessSync, constants, existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter, extname, join } from "node:path";
 import { encodeWav } from "./synth";
 import type { AlertState, Theme } from "./themes";
 
 /** Bump when any recipe changes so cached renders are replaced. */
-export const RENDER_VERSION = 1;
+export const RENDER_VERSION = 2;
 
 export interface PlayCommand {
 	command: string;
@@ -112,10 +112,26 @@ export function themeSoundFile(theme: Theme, state: AlertState, cacheDir: string
 	const directory = join(cacheDir, `v${RENDER_VERSION}`);
 	const file = join(directory, `${theme.id}-${state}.wav`);
 	if (!existsSync(file)) {
+		if (!existsSync(directory)) removeStaleRenders(cacheDir);
 		mkdirSync(directory, { recursive: true });
 		const temporary = `${file}.${process.pid}.tmp`;
 		writeFileSync(temporary, encodeWav(theme.render[state]()));
 		renameSync(temporary, file);
 	}
 	return file;
+}
+
+/** Delete renders from older recipe versions. */
+function removeStaleRenders(cacheDir: string): void {
+	let entries: string[];
+	try {
+		entries = readdirSync(cacheDir);
+	} catch {
+		return;
+	}
+	for (const entry of entries) {
+		if (/^v\d+$/.test(entry) && entry !== `v${RENDER_VERSION}`) {
+			rmSync(join(cacheDir, entry), { recursive: true, force: true });
+		}
+	}
 }

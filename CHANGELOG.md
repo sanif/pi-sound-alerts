@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Sound alerts when the agent finishes, asks a question, ends with an error, or
   is cancelled.
-- Five original themes: Reels (faah, huh?, sad trombone, bruh), Hype, Arcade,
-  Zen, and Minimal.
+- Nine original themes: Minimal (default), Zen, Arcade, Retro OS, Sci-fi,
+  Synthwave, Cartoon, Hype, and Gags (faah, huh?, sad trombone, bruh).
 - `/sounds` theme picker with live preview, plus `theme`, `preview`, `set`,
   `reset`, `volume`, `on`, `off`, and `status` subcommands with tab completion.
 - Per-state custom MP3/WAV files, borrowing a sound from another theme, or
